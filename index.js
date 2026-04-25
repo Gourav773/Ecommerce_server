@@ -113,7 +113,7 @@ const cookieParser = require("cookie-parser"); // ✅ FIX
 const config = require("./config");
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT 
 
 // ✅ CORS
 app.use(cors({
