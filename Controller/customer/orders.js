@@ -85,7 +85,10 @@ async function placeOrder(req, res) {
   try {
     await ensureOrderColumns();
 
-    const payment_method = String(req.body.payment_method || 'cod').toLowerCase() === 'online' ? 'online' : 'cod';
+    const payment_method =
+  String(req.body.payment_method || 'cod').toLowerCase() === 'online'
+    ? 'online'
+    : 'cod';
     const payment_verified = req.body.payment_verified === true;
     const payment_status = payment_method === 'online'
       ? (payment_verified ? 'paid' : 'unpaid')
@@ -119,11 +122,30 @@ async function placeOrder(req, res) {
 
     // Insert each line as one row in tbl_retailer_orders
     for (const item of cartItems) {
-      const qty = Number(item.quantity);
-      const unitPrice = Number(item.price || 0);
-      const discount = Number(item.discount || 0);
-      const unitAfterDiscount = Math.max(0, unitPrice - discount);
-      const total = unitAfterDiscount * qty;
+      // const qty = Number(item.quantity);
+      // const unitPrice = Number(item.price || 0);
+      // const discount = Number(item.discount || 0);
+      // const unitAfterDiscount = Math.max(0, unitPrice - discount);
+      // const total = unitAfterDiscount * qty;
+      const toNumber = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const qty = toNumber(item.quantity);
+const unitPrice = toNumber(item.price);
+const discount = toNumber(item.discount);
+
+if (qty <= 0) {
+  throw new Error("Invalid quantity");
+}
+
+const unitAfterDiscount = Math.max(0, unitPrice - discount);
+const total = unitAfterDiscount * qty;
+
+if (!Number.isFinite(total)) {
+  throw new Error("Invalid total calculation");
+}
 
       await query(
         `INSERT INTO tbl_retailer_orders

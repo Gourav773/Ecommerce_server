@@ -24,7 +24,8 @@ const loginAdmin = async (req, res) => {
                 return res.status(401).json({ error: "Invalid email or password" });
             }
             const { password: _, ...userData } = user;
-            res.json({ message: "Login successful", user: userData });
+            // res.json({ message: "Login successful", user: userData });
+            return res.json({ message: "Login successful", user: userData });
         });
     } catch (error) {
         console.log("Login error:", error.message);
@@ -32,64 +33,91 @@ const loginAdmin = async (req, res) => {
     }
 };
 
-const getAdminUser = async (req, res) => { 
+// const getAdminUser = async (req, res) => {
+//     try {
+//         let sqlQuery = `
+// SELECT u.*, ra.roleid, r.rolename 
+// FROM tbl_admin_user u 
+// LEFT JOIN tbl_admin_role_assign ra ON u.uid = ra.uid 
+// LEFT JOIN tbl_admin_roles r ON ra.roleid = r.roleid
+// `;
+//         // GROUP BY u.uid
+//         connection.query(sqlQuery, function (error, result) {
+//             if (error) {
+//                 console.log("error", error.sqlMessage);
+//                 return res.status(500).json({ error: "Failed to fetch users" });
+//             }
+//             res.json(result);
+//         });
+//     } catch (error) {
+//         console.log(error.message);
+//         res.status(500).json({ error: "Server error" });
+//     }
+// }
+const getAdminUser = (req, res) => {
+    const sqlQuery = `
+    SELECT 
+        u.*, 
+        GROUP_CONCAT(r.rolename) AS roles
+    FROM tbl_admin_user u 
+    LEFT JOIN tbl_admin_role_assign ra ON u.uid = ra.uid 
+    LEFT JOIN tbl_admin_roles r ON ra.roleid = r.roleid
+    GROUP BY u.uid
+    `;
+
+    connection.query(sqlQuery, (error, result) => {
+        if (error) {
+            return res.status(500).json({ error: error.sqlMessage });
+        }
+        return res.json(result);
+    });
+};
+//add// with bcrypt hash
+const addAdminUser = async (req, res) => {
     try {
-        let sqlQuery = `SELECT u.*, ra.roleid, r.rolename 
-            FROM tbl_admin_user u 
-            LEFT JOIN tbl_admin_role_assign ra ON u.uid = ra.uid 
-            LEFT JOIN tbl_admin_roles r ON ra.roleid = r.roleid
-            GROUP BY u.uid`;
-        connection.query(sqlQuery, function (error, result) {
-            if (error) {
-                console.log("error", error.sqlMessage);
-                return res.status(500).json({ error: "Failed to fetch users" });
-            }
-            res.json(result);
-        }); 
+        const password = req.body.password;
+        if (!password) {
+            return res.status(400).json({ error: "Password is required" });
+        }
+        const hash = await bcrypt.hash(password, saltRounds);
+        const photo = req.file ? (req.file.location || req.file.path) : null;
+        let sqlQuery = "insert into tbl_admin_user set?";
+        let data = {
+            uid: req.body.uid || null,
+            name: req.body.name,
+            email: req.body.email,
+            password: hash,
+            mobile: req.body.mobile || null,
+            photo: photo,
+            aadhaar: req.body.aadhaar || null,
+            doj: req.body.doj || null,
+            qualification: req.body.qualification || null,
+            dob: req.body.dob || null,
+            address: req.body.address || null,
+            state: req.body.state || null,
+            city: req.body.city || null,
+            country: req.body.country || null,
+            pin: req.body.pin || null,
+        }
+        // connection.query(sqlQuery, data, function (error, result) {
+        //     if (error) {
+        //         console.log("error", error.sqlMessage);
+        //         return res.status(500).json({ error: error.sqlMessage || "Failed to add user" });
+        //     }
+        //     res.json(result);
+        // });
+
+        connection.query(sqlQuery, values, function (error, result) {
+    if (error) {
+        return res.status(500).json({ error: error.sqlMessage });
+    }
+    return res.json({ message: "updated successfully" });
+});
     } catch (error) {
-        console.log(error.message);
+        console.log("error found:", error.message);
         res.status(500).json({ error: "Server error" });
     }
 }
-    //add// with bcrypt hash
-    const addAdminUser = async (req, res) => {
-        try {
-            const password = req.body.password;
-            if (!password) {
-                return res.status(400).json({ error: "Password is required" });
-            }
-            const hash = await bcrypt.hash(password, saltRounds);
-            const photo = req.file ? (req.file.location || req.file.path) : null;
-            let sqlQuery = "insert into tbl_admin_user set?";
-            let data = {
-                uid: req.body.uid || null,
-                name: req.body.name,
-                email: req.body.email,
-                password: hash, 
-                mobile: req.body.mobile || null,
-                photo: photo,
-                aadhaar: req.body.aadhaar || null, 
-                doj: req.body.doj || null,
-                qualification: req.body.qualification || null,
-                dob: req.body.dob || null,
-                address: req.body.address || null,
-                state: req.body.state || null, 
-                city: req.body.city || null,
-                country: req.body.country || null, 
-                pin: req.body.pin || null, 
-            } 
-            connection.query(sqlQuery, data, function (error, result) {
-                if (error) {
-                    console.log("error", error.sqlMessage);
-                    return res.status(500).json({ error: error.sqlMessage || "Failed to add user" });
-                }
-                res.json(result); 
-            });
-        } catch (error) {
-            console.log("error found:", error.message);
-            res.status(500).json({ error: "Server error" });
-        }
-    }
 
 // ///hash
 // // const bcrypt = require('bcrypt');   ///
@@ -171,16 +199,16 @@ const updateAdminUser = async (req, res) => {
 
         values.push(id);
         const sqlQuery = `UPDATE tbl_admin_user SET ${updates.join(', ')} WHERE uid = ?`;
-        
+
         connection.query(sqlQuery, values, function (error, result) {
             if (error) {
-                console.log("Error:", error.sqlMessage); 
+                console.log("Error:", error.sqlMessage);
                 return res.status(500).json({ error: "DB error" });
-            }       
+            }
             res.json({ message: "updated successfully" });
-        });      
+        });
     } catch (error) {
-        console.error("Error:", error); 
+        console.error("Error:", error);
         res.status(500).json({ error: "error while updating" });
     }
 };
@@ -203,100 +231,182 @@ const updateAdminUser = async (req, res) => {
 //         console.log(error) 
 // } 
 // } 
-const activestatus = ((req, res) => {
-    let id = req.params.uid;
-    let sqlQuery = "UPDATE tbl_admin_user set status='active' where uid=?";
+// const activestatus = ((req, res) => {
+//     let id = req.params.uid;
+//     let sqlQuery = "UPDATE tbl_admin_user set status='active' where uid=?";
 
-    connection.query(sqlQuery, [id], function (error, result) {
-        if (error) {
-            console.log("Error ", error.sqlMessage);
-            return res.status(500).json({ error: "Failed to activate user" });
+//     connection.query(sqlQuery, [id], function (error, result) {
+//         if (error) {
+//             console.log("Error ", error.sqlMessage);
+//             return res.status(500).json({ error: "Failed to activate user" });
+//         }
+//         if (result.affectedRows === 0) {
+//             return res.status(404).json({ error: "User not found" });
+//         }
+//         res.json(result);
+//     });
+// })
+const activestatus = (req, res) => {
+    connection.query(
+        "UPDATE tbl_admin_user SET status='active' WHERE uid=?",
+        [req.params.uid],
+        (error, result) => {
+            if (error) {
+                return res.status(500).json({ error: error.sqlMessage });
+            }
+            return res.json(result);
         }
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        res.json(result);
-    });
-})
+    );
+};
 
-const deactivestatus = ((req, res) => {
-    let id = req.params.uid;
-    let sqlQuery = "UPDATE tbl_admin_user set status='deactive' where uid=?";
+// const deactivestatus = ((req, res) => {
+//     let id = req.params.uid;
+//     let sqlQuery = "UPDATE tbl_admin_user set status='deactive' where uid=?";
 
-    connection.query(sqlQuery, [id], function (error, result) {
-        if (error) {
-            console.log("Error ", error.sqlMessage);
-            return res.status(500).json({ error: "Failed to deactivate user" });
+//     connection.query(sqlQuery, [id], function (error, result) {
+//         if (error) {
+//             console.log("Error ", error.sqlMessage);
+//             return res.status(500).json({ error: "Failed to deactivate user" });
+//         }
+//         if (result.affectedRows === 0) {
+//             return res.status(404).json({ error: "User not found" });
+//         }
+//         res.json(result);
+//     });
+// })
+
+const deactivestatus = (req, res) => {
+    connection.query(
+        "UPDATE tbl_admin_user SET status='deactive' WHERE uid=?",
+        [req.params.uid],
+        (error, result) => {
+            if (error) {
+                return res.status(500).json({ error: error.sqlMessage });
+            }
+            return res.json(result);
         }
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        res.json(result);
-    });
-})
+    );
+};
 //delete//
-const deleteAdminUser = async (req, res) => {
-    try {
-        const id = req.params.uid;
-        const sqlQuery = "DELETE FROM tbl_admin_user WHERE uid = ?";
-        await connection.query(sqlQuery, [id], function (error, result) {
+// const deleteAdminUser = async (req, res) => {
+//     try {
+//         const id = req.params.uid;
+//         const sqlQuery = "DELETE FROM tbl_admin_user WHERE uid = ?";
+//         // await connection.query(sqlQuery, [id], function (error, result) {
+//             connection.query(sqlQuery, [id], function (error, result) {
+//             if (error) {
+//                 console.log("Error:", error.sqlMessage);
+//                 res.json("DB error");
+//             } else {
+//                 if (result.affectedRows > 0) {
+//                     res.json("deleted successfully");
+//                 } else {
+//                     res.json("user not found");
+//                 }
+//             }
+//         });
+//     } catch (error) {
+//         console.log("Error:", error);
+//         res.json("Internal server error");
+//     }
+// }
+
+const deleteAdminUser = (req, res) => {
+    const id = req.params.uid;
+
+    connection.query(
+        "DELETE FROM tbl_admin_user WHERE uid = ?",
+        [id],
+        (error, result) => {
             if (error) {
-                console.log("Error:", error.sqlMessage);
-                res.json("DB error");
-            } else {
-                if (result.affectedRows > 0) {
-                    res.json("deleted successfully");
-                } else {
-                    res.json("user not found");
-                }
-         }
-        });
-    } catch (error) {
-        console.log("Error:", error);
-        res.json("Internal server error");
-    }
-} 
-
-
-const getAdminUserById = async (req, res) => {
-    try {
-        const userId = req.params.uid;  
-
-        let sqlQuery = "SELECT * FROM tbl_admin_user WHERE uid = ?";
-        
-        await connection.query(sqlQuery, [userId], function(error, result) {
-            if (error) {
-                 console.log("error", error.sqlMessage);
-                res.status(500).json({ error: "Internal server error" });
-            } else {
-                if (result.length > 0) {
-                    res.json(result[0]); // Assuming you want to return only one user
-                } else {
-                    res.status(404).json({ message: "User not found" });
-                }
+                return res.status(500).json({ error: error.sqlMessage });
             }
-        });
-    } catch (error) {
-        console.log("error found...");
-        res.status(500).json({ error: "Internal server error" });
-    }
-}
+
+            if (result.affectedRows > 0) {
+                return res.json("deleted successfully");
+            } else {
+                return res.json("user not found");
+            }
+        }
+    );
+};
+
+// const getAdminUserById = async (req, res) => {
+//     try {
+//         const userId = req.params.uid;
+
+//         let sqlQuery = "SELECT * FROM tbl_admin_user WHERE uid = ?";
+
+//         await connection.query(sqlQuery, [userId], function (error, result) {
+//             if (error) {
+//                 console.log("error", error.sqlMessage);
+//                 res.status(500).json({ error: "Internal server error" });
+//             } else {
+//                 if (result.length > 0) {
+//                     res.json(result[0]); // Assuming you want to return only one user
+//                 } else {
+//                     res.status(404).json({ message: "User not found" });
+//                 }
+//             }
+//         });
+//     } catch (error) {
+//         console.log("error found...");
+//         res.status(500).json({ error: "Internal server error" });
+//     }
+// }
+
+
+
+const getAdminUserById = (req, res) => {
+    const userId = req.params.uid;
+
+    connection.query(
+        "SELECT * FROM tbl_admin_user WHERE uid = ?",
+        [userId],
+        (error, result) => {
+            if (error) {
+                return res.status(500).json({ error: error.sqlMessage });
+            }
+
+            if (result.length > 0) {
+                return res.json(result[0]);
+            } else {
+                return res.status(404).json({ message: "User not found" });
+            }
+        }
+    );
+};
+
+
 //  count user /////
-const getUserCount = async(req, res) =>{ 
-    try{
-        let sqlQuery = "SELECT COUNT(uid) AS count_users FROM tbl_admin_user";
-        connection.query(sqlQuery, function(error, result){
-            if(error){
-                console.log("error", error.sqlMessage);
-                return res.status(500).json({ error: "Failed to get user count" });
+// const getUserCount = async (req, res) => {
+//     try {
+//         let sqlQuery = "SELECT COUNT(uid) AS count_users FROM tbl_admin_user";
+//         connection.query(sqlQuery, function (error, result) {
+//             if (error) {
+//                 console.log("error", error.sqlMessage);
+//                 return res.status(500).json({ error: "Failed to get user count" });
+//             }
+//             res.json(result);
+//         });
+//     } catch (error) {
+//         console.log(error.message);
+//         res.status(500).json({ error: "Server error" });
+//     }
+// }
+
+
+const getUserCount = (req, res) => {
+    connection.query(
+        "SELECT COUNT(uid) AS count_users FROM tbl_admin_user",
+        (error, result) => {
+            if (error) {
+                return res.status(500).json({ error: error.sqlMessage });
             }
-            res.json(result);
-        });
-    }catch(error){
-        console.log(error.message);
-        res.status(500).json({ error: "Server error" });
-    }
-}
+            return res.json(result[0]);
+        }
+    );
+};
 
 
-module.exports = { loginAdmin, getAdminUser, addAdminUser, updateAdminUser, activestatus,deactivestatus, deleteAdminUser,getAdminUserById ,getUserCount }   
+module.exports = { loginAdmin, getAdminUser, addAdminUser, updateAdminUser, activestatus, deactivestatus, deleteAdminUser, getAdminUserById, getUserCount }   

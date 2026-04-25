@@ -1,63 +1,102 @@
 const connection = require("../Model/model");
 
 // Add new order
-const addOrder = async (req, res) => {
-    try {
-        const sqlQuery = "INSERT INTO tbl_retailer_orders SET ?";
-        const data = {
-            orderid: req.body.orderid,
-            regno: req.body.regno,
-            pid: req.body.pid,
-            pname: req.body.pname,
-            customer_name: req.body.customer_name,
-            customer_email: req.body.customer_email,
-            customer_phone: req.body.customer_phone,
-            customer_address: req.body.customer_address,
-            quantity: req.body.quantity,
-            unit_price: req.body.unit_price,
-            total_price: req.body.total_price,
-            status: req.body.status || 'pending',
-            payment_method: req.body.payment_method || 'cod',
-            payment_status: req.body.payment_status || 'unpaid',
-            order_date: req.body.order_date || new Date(),
-            delivery_date: req.body.delivery_date || null,
-            notes: req.body.notes || ''
-        };
+// const addOrder = (req, res) => {
+//     try {
+//         const sqlQuery = "INSERT INTO tbl_retailer_orders SET ?";
+//         const data = {
+//             orderid: req.body.orderid,
+//             regno: req.body.regno,
+//             pid: req.body.pid,
+//             pname: req.body.pname,
+//             customer_name: req.body.customer_name,
+//             customer_email: req.body.customer_email,
+//             customer_phone: req.body.customer_phone,
+//             customer_address: req.body.customer_address,
+//             quantity: req.body.quantity,
+//             unit_price: req.body.unit_price,
+//             total_price: req.body.total_price,
+//             status: req.body.status || 'pending',
+//             payment_method: req.body.payment_method || 'cod',
+//             payment_status: req.body.payment_status || 'unpaid',
+//             order_date: req.body.order_date || new Date(),
+//             delivery_date: req.body.delivery_date || null,
+//             notes: req.body.notes || ''
+//         };
 
-        connection.query(sqlQuery, data, (error, result) => {
-            if (error) {
-                console.log("Error:", error.sqlMessage);
-                return res.status(500).json({ error: "Error adding order" });
-            }
-            res.status(201).json({ message: "Order added successfully", result });
-        });
-    } catch (error) {
-        console.log("Error:", error);
-        res.status(500).json({ error: "Server error" });
+//         connection.query(sqlQuery, data, (error, result) => {
+//             if (error) {
+//                 console.log("Error:", error.sqlMessage);
+//                 return res.status(500).json({ error: "Error adding order" });
+//             }
+//             res.status(201).json({ message: "Order added successfully", result });
+//         });
+//     } catch (error) {
+//         console.log("Error:", error);
+//         res.status(500).json({ error: "Server error" });
+//     }
+// };
+
+const addOrder = (req, res) => {
+  try {
+    console.log("BODY:", req.body); // debug
+
+    if (!req.body.orderid || !req.body.regno || !req.body.pid) {
+      return res.status(400).json({ error: "Required fields missing" });
     }
-};
 
-// Get orders by retailer registration number
-const getOrdersByRegNo = async (req, res) => {
-    try {
-        const regno = req.params.regno;
-        const sqlQuery = "SELECT * FROM tbl_retailer_orders WHERE regno = ? ORDER BY order_date DESC";
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
 
-        connection.query(sqlQuery, [regno], (error, result) => {
-            if (error) {
-                console.log("Error:", error.sqlMessage);
-                return res.status(500).json({ error: "Error fetching orders" });
-            }
-            res.json(result);
-        });
-    } catch (error) {
-        console.log("Error:", error);
-        res.status(500).json({ error: "Server error" });
+    const total_price = toNumber(req.body.total_price);
+    const unit_price  = toNumber(req.body.unit_price);
+    const quantity    = toNumber(req.body.quantity);
+
+    if (total_price === null) {
+      return res.status(400).json({ error: "Invalid total_price" });
     }
+    if (unit_price === null || quantity === null) {
+      return res.status(400).json({ error: "Invalid unit_price/quantity" });
+    }
+
+    const data = {
+      orderid: req.body.orderid,
+      regno: req.body.regno,
+      pid: req.body.pid,
+      pname: req.body.pname,
+      customer_name: req.body.customer_name,
+      customer_email: req.body.customer_email,
+      customer_phone: req.body.customer_phone,
+      customer_address: req.body.customer_address,
+      quantity,
+      unit_price,
+      total_price,
+      status: req.body.status || 'pending',
+      payment_method: (req.body.payment_method || 'cod').toLowerCase(),
+      payment_status: req.body.payment_status || 'unpaid',
+      order_date: new Date().toISOString().slice(0,19).replace('T',' '),
+      delivery_date: req.body.delivery_date || null,
+      notes: req.body.notes || ''
+    };
+
+    connection.query("INSERT INTO tbl_retailer_orders SET ?", data, (error, result) => {
+      if (error) {
+        console.log("SQL Error:", error.sqlMessage);
+        return res.status(500).json({ error: error.sqlMessage });
+      }
+      return res.status(201).json({ message: "Order added", result });
+    });
+
+  } catch (e) {
+    console.log("Server Error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
 };
 
 // Get single order by order ID
-const getOrderById = async (req, res) => {
+const getOrderById = (req, res) => {
     try {
         const orderid = req.params.orderid;
         const sqlQuery = "SELECT * FROM tbl_retailer_orders WHERE orderid = ?";
@@ -158,7 +197,7 @@ const deleteOrder = (req, res) => {
 };
 
 // Get order stats for dashboard
-const getOrderStats = async (req, res) => {
+const getOrderStats = (req, res) => {
     try {
         const regno = req.params.regno;
         const sqlQuery = `
@@ -188,7 +227,7 @@ const getOrderStats = async (req, res) => {
 };
 
 // Admin: Get all orders
-const getAllOrders = async (req, res) => {
+const getAllOrders = (req, res) => {
     try {
         const sqlQuery = "SELECT * FROM tbl_retailer_orders ORDER BY order_date DESC";
 
