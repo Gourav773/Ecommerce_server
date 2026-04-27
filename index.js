@@ -117,9 +117,13 @@ const port = process.env.PORT
 
 // ✅ CORS
 app.use(cors({
-    origin: config.cors.origins,
-    methods: config.cors.methods,
-    credentials: true // ⚠️ important for cookies
+  origin: [
+    "http://localhost:3000",
+    "https://ecommerce-view-ten.vercel.app",
+    "https://retailer-xyz.vercel.app",
+    "https://customer-xyz.vercel.app"
+  ],
+  credentials: true
 }));
 
 // ✅ Middlewares
