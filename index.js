@@ -121,7 +121,7 @@ app.use(cors({
     "http://localhost:3000",
     "https://ecommerce-view-ten.vercel.app",
     "https://ecommerce-view-jpcc.vercel.app",
-    "https://customer-xyz.vercel.app"
+    "https://ecommerce-view-whcp.vercel.app"
   ],
   credentials: true
 }));
