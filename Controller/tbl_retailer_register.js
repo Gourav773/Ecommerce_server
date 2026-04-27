@@ -110,7 +110,7 @@
 //         const regno = req.params.regno;
 //         console.log("regno", regno);
 //         const sqlQuery = "SELECT * FROM tbl_retailer_register WHERE regno = ?";
-        
+
 //         await connection.query(sqlQuery, regno, (error, result) => {
 //             if (error) {
 //                 console.log("Error:", error.sqlMessage);
@@ -271,11 +271,11 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
 // LOGINconst Login = (req, res) => {
-    const Login = (req, res) => {
+const Login = (req, res) => {
     const { email, password } = req.body;
 
     const sqlQuery = "SELECT * FROM tbl_retailer_register WHERE email=?";
-    
+
     connection.query(sqlQuery, [email], (err, result) => {
         if (err) return res.status(500).json({ error: "Server error" });
 
@@ -299,9 +299,9 @@ const bcrypt = require("bcrypt");
 
             // ✅ COOKIE FIX
             res.cookie("token", token, {
-                httpOnly: true,          // 🔥 FIX
-                sameSite: "lax",
-                secure: false,           // true only on HTTPS
+                httpOnly: true,
+                secure: true,          // ✅ MUST for HTTPS
+                sameSite: "none",      // ✅ MUST for cross-domain
                 maxAge: 24 * 60 * 60 * 1000
             });
 
